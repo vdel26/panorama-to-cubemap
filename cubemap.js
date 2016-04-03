@@ -1,7 +1,7 @@
 (function () {
   var input = document.querySelector('input[type=file]')
-  var ctx = document.querySelector('#canvasIn').getContext('2d')
-  var ctxOut = document.querySelector('#canvasOut').getContext('2d')
+  var canvases = document.querySelector('.canvases')
+  var ctx, ctxOut
 
   // generate array ranges
   function range (start, stop, step) {
@@ -27,14 +27,14 @@
     return x
   }
 
-  // get an rgba pixel
-  function getPixel(imageData, x, y) {
+  // get rgb info from an rgba pixel
+  function getPixel (imageData, x, y) {
     var idx = (x + y * imageData.width) * 4
     return [imageData.data[idx], imageData.data[idx + 1], imageData.data[idx + 2]]
   }
 
-  // set an rgba pixel
-  function setPixel(imageData, x, y, r, g, b, a) {
+  // set an rgba pixel (alpha defaults to opaque)
+  function setPixel (imageData, x, y, r, g, b, a) {
     var idx = (x + y * imageData.width) * 4
     imageData.data[idx + 0] = r
     imageData.data[idx + 1] = g
@@ -62,11 +62,8 @@
   function convertBack (imgIn, imgOut) {
     var inSize = [imgIn.width, imgIn.height]
     var outSize = [imgOut.width, imgOut.height]
-    var inPix = imgIn.data
-    var outPix = imgOut.data
     var edge = inSize[0] / 4 // the length of each edge in pixels
 
-    console.log(outSize[0])
     for (var i = 0; i < outSize[0]; i++) {
       var face = Math.floor(i / edge) // 0 - back, 1 - left 2 - front, 3 - right
 
@@ -74,9 +71,7 @@
       if (face === 2) rng = range(0, edge * 3)
       else rng = range(edge, edge * 2)
 
-      console.log(face)
-
-      for (var j in rng) {
+      for (var j=rng[0]; j <= rng[rng.length - 1]; j++) {
         var face2
         if (j < edge) face2 = 4 // top
         else if (j >= 2 * edge) face2 = 5 // bottom
@@ -100,24 +95,43 @@
         var nu = vf - vi
 
         // pixel values of four corners
-        var A = getPixel(imgIn, ui % inSize[0], clip(vi, 0, inSize[1]-1))
-        var B = getPixel(imgIn, u2 % inSize[0], clip(vi, 0, inSize[1]-1))
-        var C = getPixel(imgIn, ui % inSize[0], clip(v2, 0, inSize[1]-1))
-        var D = getPixel(imgIn, u2 % inSize[0], clip(v2, 0, inSize[1]-1))
+        var A = getPixel(imgIn, ui % inSize[0], clip(vi, 0, inSize[1] - 1))
+        var B = getPixel(imgIn, u2 % inSize[0], clip(vi, 0, inSize[1] - 1))
+        var C = getPixel(imgIn, ui % inSize[0], clip(v2, 0, inSize[1] - 1))
+        var D = getPixel(imgIn, u2 % inSize[0], clip(v2, 0, inSize[1] - 1))
 
         // interpolate
-        var RGBcolor = {}
-        RGBcolor.r = A[0]*(1-mu)*(1-nu) + B[0]*(mu)*(1-nu) + C[0]*(1-mu)*nu+D[0]*mu*nu
-        RGBcolor.g = A[1]*(1-mu)*(1-nu) + B[1]*(mu)*(1-nu) + C[1]*(1-mu)*nu+D[1]*mu*nu
-        RGBcolor.b = A[2]*(1-mu)*(1-nu) + B[2]*(mu)*(1-nu) + C[2]*(1-mu)*nu+D[2]*mu*nu
+        var color = {}
+        color.r = A[0]*(1 - mu)*(1 - nu) + B[0]*(mu)*(1 - nu) + C[0]*(1 - mu)*nu+D[0]*mu*nu
+        color.g = A[1]*(1 - mu)*(1 - nu) + B[1]*(mu)*(1 - nu) + C[1]*(1 - mu)*nu+D[1]*mu*nu
+        color.b = A[2]*(1 - mu)*(1 - nu) + B[2]*(mu)*(1 - nu) + C[2]*(1 - mu)*nu+D[2]*mu*nu
 
         setPixel(imgOut, i, j,
-          Math.round(RGBcolor.r),
-          Math.round(RGBcolor.g),
-          Math.round(RGBcolor.b))
+          Math.round(color.r),
+          Math.round(color.g),
+          Math.round(color.b))
       }
 
     }
+  }
+
+  // make background black opaque
+  function opaqueBackground (imageData) {
+    for (var i = 0; i < imageData.data.length; i+=4) {
+      imageData.data[i]     = 0
+      imageData.data[i + 1] = 0
+      imageData.data[i + 2] = 0
+      imageData.data[i + 3] = 255
+    }
+  }
+
+  function createEl (tag, className, attrs) {
+    var el = document.createElement(tag)
+    el.classList.add(className)
+    for (var prop in attrs) {
+      el.setAttribute(prop, attrs[prop])
+    }
+    return el
   }
 
   input.addEventListener('change', function (evt) {
@@ -127,13 +141,24 @@
     reader.onload = function (evt) {
       var img = new Image()
       img.src = reader.result
+
+      // create canvases
+      var canvasIn = createEl('canvas', 'canvasIn',
+                              { width: img.width, height: img.height })
+      var canvasOut = createEl('canvas', 'canvasOut',
+                               { width: img.width, height: img.height * 3 / 2 })
+      canvases.appendChild(canvasIn)
+      canvases.appendChild(canvasOut)
+      ctx = canvasIn.getContext('2d')
+      ctxOut = canvasOut.getContext('2d')
+
       ctx.drawImage(img, 0, 0)
 
       var imgIn = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height)
       var inSize = [imgIn.width, imgIn.height]
-      var imgOut = ctxOut.createImageData(inSize[0], inSize[0]* 3/4)
-      var inPix = imgIn.data
+      var imgOut = ctxOut.createImageData(inSize[0], inSize[0] * 3 / 4)
 
+      opaqueBackground(imgOut)
       convertBack(imgIn, imgOut)
       ctxOut.putImageData(imgOut, 0, 0)
     }
