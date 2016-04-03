@@ -1,6 +1,9 @@
 (function () {
-  var input = document.querySelector('input[type=file]')
-  var canvases = document.querySelector('.canvases')
+  var $ = document.querySelector
+  var input = $('input[type=file]')
+  var startBtn = $('.controls__generate')
+  var sliceBtn = $('.controls__slice')
+  var canvases = $('.canvases')
   var ctx, ctxOut
 
   // generate array ranges
@@ -153,18 +156,23 @@
       ctxOut = canvasOut.getContext('2d')
 
       ctx.drawImage(img, 0, 0)
-
-      var imgIn = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height)
-      var inSize = [imgIn.width, imgIn.height]
-      var imgOut = ctxOut.createImageData(inSize[0], inSize[0] * 3 / 4)
-
-      opaqueBackground(imgOut)
-      convertBack(imgIn, imgOut)
-      ctxOut.putImageData(imgOut, 0, 0)
     }
 
-    console.log(file)
     reader.readAsDataURL(file)
+  })
+
+  startBtn.addEventListener('click', function (evt) {
+    var imgIn = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height)
+    var inSize = [imgIn.width, imgIn.height]
+    var imgOut = ctxOut.createImageData(inSize[0], inSize[0] * 3 / 4)
+
+    opaqueBackground(imgOut)
+    convertBack(imgIn, imgOut)
+    ctxOut.putImageData(imgOut, 0, 0)
+  })
+
+  sliceBtn.addEventListener('click', function (evt) {
+    // TODO
   })
 
 })()
