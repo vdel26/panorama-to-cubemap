@@ -130,18 +130,20 @@
 
   function createEl (tag, className, attrs) {
     var el = document.createElement(tag)
-    el.classList.add(className)
+    if (className) el.classList.add(className)
     for (var prop in attrs) {
       el.setAttribute(prop, attrs[prop])
     }
     return el
   }
 
-  function sliceOutput () {
+  // get array of cubemap sides, each rendered into an off-screen canvas
+  function generateSlices () {
     var names = [['', '', 'posy', ''],
                  ['negz', 'negx', 'posz', 'posx'],
                  ['', '', 'negy', '']]
     var size = ctxOut.canvas.width / 4
+    var slices = []
 
     names.forEach(function (row, i) {
       row.forEach(function (cell, j) {
@@ -150,9 +152,28 @@
                       .getContext('2d')
         var img = ctxOut.getImageData(size * j, size * i, size, size)
         ctx.putImageData(img, 0, 0)
-        canvases.appendChild(ctx.canvas)
+        slices.push(ctx.canvas)
       })
     })
+
+    return slices
+  }
+
+  // download all slices at once
+  function downloadAll (slices) {
+    // create invisible link
+    var link = createEl('a', '', { download: null })
+    link.style.display = 'none'
+    document.body.appendChild(link)
+
+    // simulate click on links to trigger downloads
+    slices.forEach(function (canvas) {
+      link.setAttribute('href', canvas.toDataURL())
+      link.setAttribute('download', canvas.className)
+      link.click()
+    })
+
+    document.body.removeChild(link)
   }
 
   input.addEventListener('change', function (evt) {
@@ -189,6 +210,8 @@
     ctxOut.putImageData(imgOut, 0, 0)
   })
 
-  sliceBtn.addEventListener('click', sliceOutput)
+  sliceBtn.addEventListener('click', function () {
+    downloadAll(generateSlices())
+  })
 
 })()
