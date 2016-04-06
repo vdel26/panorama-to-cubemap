@@ -1,5 +1,5 @@
 (function () {
-  var $ = document.querySelector
+  var $ = document.querySelector.bind(document)
   var input = $('input[type=file]')
   var startBtn = $('.controls__generate')
   var sliceBtn = $('.controls__slice')
@@ -8,7 +8,7 @@
 
   // generate array ranges
   function range (start, stop, step) {
-    if (stop == null) {
+    if (stop === null) {
       stop = start || 0
       start = 0
     }
@@ -74,7 +74,7 @@
       if (face === 2) rng = range(0, edge * 3)
       else rng = range(edge, edge * 2)
 
-      for (var j=rng[0]; j <= rng[rng.length - 1]; j++) {
+      for (var j = rng[0]; j <= rng[rng.length - 1]; j++) {
         var face2
         if (j < edge) face2 = 4 // top
         else if (j >= 2 * edge) face2 = 5 // bottom
@@ -120,7 +120,7 @@
 
   // make background black opaque
   function opaqueBackground (imageData) {
-    for (var i = 0; i < imageData.data.length; i+=4) {
+    for (var i = 0; i < imageData.data.length; i += 4) {
       imageData.data[i]     = 0
       imageData.data[i + 1] = 0
       imageData.data[i + 2] = 0
@@ -137,11 +137,29 @@
     return el
   }
 
+  function sliceOutput () {
+    var names = [['', '', 'posy', ''],
+                 ['negz', 'negx', 'posz', 'posx'],
+                 ['', '', 'negy', '']]
+    var size = ctxOut.canvas.width / 4
+
+    names.forEach(function (row, i) {
+      row.forEach(function (cell, j) {
+        if (cell === '') return
+        var ctx = createEl('canvas', cell, { width: size, height: size })
+                      .getContext('2d')
+        var img = ctxOut.getImageData(size * j, size * i, size, size)
+        ctx.putImageData(img, 0, 0)
+        canvases.appendChild(ctx.canvas)
+      })
+    })
+  }
+
   input.addEventListener('change', function (evt) {
     var file = this.files[0]
     var reader = new FileReader()
 
-    reader.onload = function (evt) {
+    reader.onload = function (evt2) {
       var img = new Image()
       img.src = reader.result
 
@@ -171,8 +189,6 @@
     ctxOut.putImageData(imgOut, 0, 0)
   })
 
-  sliceBtn.addEventListener('click', function (evt) {
-    // TODO
-  })
+  sliceBtn.addEventListener('click', sliceOutput)
 
 })()
